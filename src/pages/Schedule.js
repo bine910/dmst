@@ -136,7 +136,7 @@ export default function Schedule() {
         />
         <input
           type="time"
-          placeholder="Giờ kết thúc"
+          placeholder="Giờ kết thúc FUCK"
           value={endtime}
           onChange={(e) => setEndtime(e.target.value)}
         />
