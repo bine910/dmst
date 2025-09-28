@@ -6,29 +6,39 @@ import {
   createViewMonthGrid,
   createViewMonthAgenda,
 } from "@schedule-x/calendar";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import { createEventsServicePlugin } from "@schedule-x/events-service";
 import { createDragAndDropPlugin } from "@schedule-x/drag-and-drop";
-import "@schedule-x/theme-default/dist/index.css";
-import moment from "moment";
 import { createEventModalPlugin } from "@schedule-x/event-modal";
-import { Temporal } from "@js-temporal/polyfill";
+import "@schedule-x/theme-default/dist/index.css";
 
-// Đảm bảo Temporal có sẵn toàn cục
+import { Temporal } from "@js-temporal/polyfill";
+import moment from "moment";
+import "./schedule.css";
+
+
+// ✅ MUI Components
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker as MuiDatePicker, TimePicker as MuiTimePicker } from "@mui/x-date-pickers";
+import { TextField, Button, List, ListItem, ListItemText, IconButton, Checkbox, ListItemIcon } from "@mui/material";
+import DeleteIcon from '@mui/icons-material/Delete';
+import dayjs from "dayjs";
+
+// Đảm bảo Temporal sẵn sàng
 if (!window.Temporal) {
   window.Temporal = Temporal;
 }
 
 export default function Schedule() {
   const eventsService = useState(() => createEventsServicePlugin())[0];
+
   const [Events, setEvents] = useState(() => {
     const storedEvents = localStorage.getItem("Events");
     if (!storedEvents) return [];
     try {
       return JSON.parse(storedEvents).map((event) => ({
         ...event,
-        start: Temporal.ZonedDateTime.from(event.start), // Chuyển chuỗi về Temporal.ZonedDateTime
+        start: Temporal.ZonedDateTime.from(event.start),
         end: Temporal.ZonedDateTime.from(event.end),
       }));
     } catch (error) {
@@ -36,10 +46,28 @@ export default function Schedule() {
       return [];
     }
   });
+
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(null); // Sử dụng null cho DatePicker
+  const [date, setDate] = useState(null);
   const [starttime, setStarttime] = useState("");
   const [endtime, setEndtime] = useState("");
+
+  // State mới để track các event đã check (dùng Set cho nhanh)
+  const [checkedEvents, setCheckedEvents] = useState(new Set());
+
+  // Toggle check cho event
+  const toggleCheck = (id) => {
+    setCheckedEvents((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
   const calendar = useCalendarApp({
     views: [
       createViewDay(),
@@ -55,30 +83,49 @@ export default function Schedule() {
     ],
     callbacks: {
       onEventUpdate: (updatedEvent) => {
-        setEvents((prev) =>
-          prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e))
-        );
+        console.log("Event updated via drag & drop (new):", updatedEvent);
+        
+        const updatedEventCopy = {
+          ...updatedEvent,
+          start: Temporal.ZonedDateTime.from(updatedEvent.start.toString()),
+          end: Temporal.ZonedDateTime.from(updatedEvent.end.toString()),
+        };
+        
+        setEvents((prev) => {
+          const newEvents = prev.map((e) => (e.id === updatedEventCopy.id ? updatedEventCopy : e));
+          console.log("Updated Events state:", newEvents);
+          return newEvents;
+        });
+        
+        eventsService.update(updatedEventCopy);
       },
     },
   });
 
+  // ✅ Thêm sự kiện
   const addEvent = () => {
     if (!title || !date || !starttime || !endtime) {
       alert("Vui lòng điền đầy đủ thông tin!");
       return;
     }
+
     const dateStr = moment(date).format("YYYY-MM-DD");
-    const startDateTimeStr = `${dateStr}T${starttime}:00[Asia/Ho_Chi_Minh]`; // Thêm giây và múi giờ
-    const endDateTimeStr = `${dateStr}T${endtime}:00[Asia/Ho_Chi_Minh]`;
+    const startDateTimeStr = `${dateStr}T${starttime}:00+07:00[Asia/Ho_Chi_Minh]`;
+    const endDateTimeStr = `${dateStr}T${endtime}:00+07:00[Asia/Ho_Chi_Minh]`;
+
     try {
       const newEvent = {
-        id: String(Date.now()), // ID duy nhất
+        id: String(Date.now()),
         title,
-        start: Temporal.ZonedDateTime.from(startDateTimeStr), // Sử dụng Temporal.ZonedDateTime
+        start: Temporal.ZonedDateTime.from(startDateTimeStr),
         end: Temporal.ZonedDateTime.from(endDateTimeStr),
       };
-      setEvents((prev) => [...prev, newEvent]);
-      eventsService.add(newEvent);
+      setEvents((prev) => {
+        const updatedEvents = [...prev, newEvent];
+        eventsService.set(updatedEvents);
+        return updatedEvents;
+      });
+      console.log("Event added:", newEvent);
       setTitle("");
       setDate(null);
       setStarttime("");
@@ -89,69 +136,141 @@ export default function Schedule() {
     }
   };
 
+  // ✅ Xóa sự kiện
   const deleteEvent = (id) => {
+    eventsService.remove(id); // Xóa từ service trước
     setEvents((prev) => prev.filter((e) => e.id !== id));
-    eventsService.remove(id);
+    setCheckedEvents((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(id);
+      return newSet;
+    });
   };
 
+  // ✅ Lưu vào localStorage
   useEffect(() => {
-    // Lưu trữ sự kiện dưới dạng chuỗi để tương thích với localStorage
     const eventsForStorage = Events.map((event) => ({
       ...event,
-      start: event.start.toString(), // Chuyển Temporal về chuỗi
+      start: event.start.toString(),
       end: event.end.toString(),
     }));
     localStorage.setItem("Events", JSON.stringify(eventsForStorage));
   }, [Events]);
 
   useEffect(() => {
-    // Đồng bộ ban đầu với eventsService
-    if (Events.length > 0) {
-      eventsService.set(Events);
-    }
+    console.log("Events state changed, syncing to service:", Events);
+    eventsService.set(Events);
   }, [Events, eventsService]);
 
-  return (
-    <div>
-      <div className="to-do-list">
-        <h2>Danh sách việc cần làm</h2>
-        <input
-          className="input-job"
-          type="text"
-          placeholder="Việc cần làm"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <DatePicker
-          selected={date}
-          onChange={(newDate) => setDate(newDate)}
-          dateFormat="yyyy-MM-dd"
-          placeholderText="Chọn ngày..."
-        />
-        <input
-          type="time"
-          placeholder="Giờ bắt đầu"
-          value={starttime}
-          onChange={(e) => setStarttime(e.target.value)}
-        />
-        <input
-          type="time"
-          placeholder="Giờ kết thúc FUCK"
-          value={endtime}
-          onChange={(e) => setEndtime(e.target.value)}
-        />
+  // Hàm định dạng thời gian
+  const formatTime = (dateTime) => {
+    const hour = dateTime.hour.toString().padStart(2, '0');
+    const minute = dateTime.minute.toString().padStart(2, '0');
+    return `${hour}:${minute}`;
+  };
 
-        <button onClick={addEvent}>Thêm việc</button>
-        <ul>
-          {Events.map((event) => (
-            <li key={event.id}>
-              {event.title} ({event.start.toString()} → {event.end.toString()})
-              <button onClick={() => deleteEvent(event.id)}>Xóa Việc</button>
-            </li>
-          ))}
-        </ul>
+  const formatDate = (dateTime) => {
+    const day = dateTime.day.toString().padStart(2, '0');
+    const month = dateTime.month.toString().padStart(2, '0');
+    const year = dateTime.year;
+    return `${day}/${month}/${year}`;
+  };
+
+  return (
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <div style={{ padding: "20px" }}>
+        <h2>📅 To-do-list</h2>
+        <div className="schedule-container">
+
+        <div className="schedule-side">
+
+        {/* Form nhập liệu với MUI */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "15px", maxWidth: "400px", marginBottom: "20px" }}>
+          <TextField
+            label="Tên sự kiện"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            variant="outlined"
+            size="small"
+          />
+          <MuiDatePicker
+            label="Chọn ngày"
+            value={date ? dayjs(date) : null}
+            onChange={(newValue) =>
+              setDate(newValue ? newValue.format("YYYY-MM-DD") : null)
+            }
+            slotProps={{ textField: { size: "small" } }}
+          />
+          <MuiTimePicker
+            label="Giờ bắt đầu"
+            value={starttime ? dayjs(starttime, "HH:mm") : null}
+            onChange={(newValue) =>
+              setStarttime(newValue ? newValue.format("HH:mm") : "")
+            }
+            slotProps={{ textField: { size: "small" } }}
+          />
+          <MuiTimePicker
+            label="Giờ kết thúc"
+            value={endtime ? dayjs(endtime, "HH:mm") : null}
+            onChange={(newValue) =>
+              setEndtime(newValue ? newValue.format("HH:mm") : "")
+            }
+            slotProps={{ textField: { size: "small" } }}
+          />
+          <Button variant="contained" color="primary" onClick={addEvent}>
+            Thêm sự kiện
+          </Button>
+        </div>
+
+        {/* Danh sách event với Checkbox và gạch ngang */}
+        <List>
+          {Events.map((event) => {
+            const isChecked = checkedEvents.has(event.id);
+            return (
+              <ListItem
+                key={event.id}
+                disablePadding
+                secondaryAction={
+                  <IconButton edge="end" aria-label="delete" onClick={() => deleteEvent(event.id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                }
+              >
+                <ListItemIcon>
+                  <Checkbox
+                    edge="start"
+                    checked={isChecked}
+                    onChange={() => toggleCheck(event.id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                </ListItemIcon>
+                <ListItemText
+                  primary={event.title}
+                  secondary={`${formatTime(event.start)} -> ${formatTime(event.end)} ${formatDate(event.start)}`}
+                  primaryTypographyProps={{
+                    style: {
+                      textDecoration: isChecked ? 'line-through' : 'none',
+                    },
+                  }}
+                  secondaryTypographyProps={{
+                    style: {
+                      textDecoration: isChecked ? 'line-through' : 'none',
+                    },
+                  }}
+                />
+              </ListItem>
+            );
+          })}
+        </List>
+        </div>
+
+        {/* Calendar */}<div className="schedule-calendar">
+
+        <ScheduleXCalendar calendarApp={calendar} />
+        </div>
+        </div>
       </div>
-      <ScheduleXCalendar calendarApp={calendar} />
-    </div>
+    </LocalizationProvider>
   );
 }

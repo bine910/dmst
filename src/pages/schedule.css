@@ -1,0 +1,244 @@
+/* schedule.css
+   Styles for your Schedule component (form + list + Schedule-X calendar)
+   Usage: import './schedule.css' in the component and wrap the root div with
+   <div className="schedule-container"> ... </div>
+*/
+
+:root{
+  --sx-bg: #ffffff;
+  --card-bg: #ffffff;
+  --muted: #6b7280;
+  --accent: #1976d2; /* MUI primary */
+  --accent-600: #155fa8;
+  --danger: #e53935;
+  --card-radius: 12px;
+  --shadow: 0 6px 18px rgba(16,24,40,0.08);
+  --glass: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4));
+}
+
+/* Layout */
+.schedule-container {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Mobile: stack */
+@media (max-width: 880px){
+  .schedule-container{
+    grid-template-columns: 1fr;
+    padding: 14px;
+    gap: 12px;
+  }
+}
+
+/* Left column: form + todo list */
+.schedule-side {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 200px;
+}
+
+.schedule-side h2{
+  margin: 0 0 6px 0;
+  font-size: 18px;
+}
+
+/* Form elements override to make MUI textfields & pickers fit */
+.schedule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.schedule-form .MuiTextField-root,
+.schedule-form .MuiFormControl-root {
+  background: transparent;
+}
+
+/* Buttons */
+.schedule-actions{
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+
+.schedule-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 6px 12px rgba(25,118,210,0.12);
+}
+
+.schedule-btn.secondary{
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid rgba(16,24,40,0.06);
+}
+
+/* Todo list */
+.schedule-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-list-item {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background .12s ease, transform .06s ease;
+}
+
+.schedule-list-item:hover{
+  background: rgba(25,118,210,0.04);
+}
+
+.schedule-list-item .title{
+  font-weight: 600;
+  color: #111827;
+}
+
+.schedule-list-item .meta{
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.schedule-list-item.done .title,
+.schedule-list-item.done .meta{
+  text-decoration: line-through;
+  color: rgba(0,0,0,0.35);
+}
+
+.icon-delete{
+  color: var(--danger);
+}
+
+/* Right column: calendar wrapper */
+.schedule-calendar {
+  background: transparent;
+  border-radius: var(--card-radius);
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+/* give calendar a card feel */
+.schedule-calendar .sx-wrapper,
+.schedule-calendar .sx-react-calendar-wrapper,
+.schedule-calendar .sx-vue-calendar-wrapper {
+  background: var(--card-bg);
+  border-radius: calc(var(--card-radius) - 4px);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  height: calc(100vh - 160px);
+  max-height: 820px;
+}
+
+@media (max-width:880px){
+  .schedule-calendar .sx-wrapper{ height: 60vh; max-height: 640px; }
+}
+
+/* Header / toolbar */
+.schedule-calendar .sx-header,
+.schedule-calendar .sx-toolbar {
+  padding: 12px 14px;
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  background: linear-gradient(90deg, rgba(255,255,255,0.6), rgba(250,250,250,0.6));
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.schedule-calendar .sx-view-header{
+  font-weight:700;
+}
+
+/* Day cell tweaks */
+.schedule-calendar .sx-month-grid .sx-day{
+  min-height: 92px;
+  padding: 8px;
+}
+
+/* Current day highlight */
+.schedule-calendar .sx-day--today{
+  background: linear-gradient(180deg, rgba(25,118,210,0.06), rgba(25,118,210,0.03));
+  border-radius: 8px;
+}
+
+/* Time grid */
+.schedule-calendar .sx-time-grid .sx-time-slot{
+  min-height: 34px;
+  border-bottom: 1px solid rgba(15,23,42,0.03);
+}
+
+/* Now line */
+.schedule-calendar .sx-now-line{
+  height:2px;
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(25,118,210,0.14);
+}
+
+/* Event card style */
+.schedule-calendar .sx-event{
+  border-radius: 10px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 10px rgba(2,6,23,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.schedule-calendar .sx-event:hover{
+  transform: translateY(-4px);
+  box-shadow: 0 10px 22px rgba(2,6,23,0.12);
+}
+
+/* event colors - override via event._options.additionalClasses if needed */
+.schedule-calendar .sx-event.default{
+  background: linear-gradient(180deg,#e8f0ff,#dbe9ff);
+  color: #0f172a;
+}
+
+.schedule-calendar .sx-event.important{
+  background: linear-gradient(180deg,#fff1f0,#ffdfde);
+  border-left: 4px solid #e53935;
+}
+
+/* truncate long titles inside event */
+.schedule-calendar .sx-event .sx-event-title{
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* small screens: compact tweaks */
+@media (max-width:480px){
+  .schedule-side{ padding: 12px; }
+  .schedule-container{ gap: 10px; }
+  .schedule-list-item{ padding: 6px; }
+  .schedule-calendar .sx-wrapper{ height: 52vh; }
+}
+
+/* Helpers */
+.u-muted{ color:var(--muted); font-size:12px }
+.center{ display:flex; align-items:center; justify-content:center }
+
+/* End of schedule.css */
